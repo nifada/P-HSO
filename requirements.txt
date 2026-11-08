@@ -1,0 +1,10 @@
+# Versions used for the published results (Python 3.13)
+numpy==2.5.3
+scipy==1.18.1
+pandas==3.0.5
+scikit-learn==1.9.1
+matplotlib==3.11.2
+openpyxl==3.1.5
+nimfa==1.4.0      # NMF, as in the original HSO study; see code/compat for NumPy 2
+ssmpy==0.2.7      # semantic similarity (DiShIn)
+rdflib            # required by ssmpy at import

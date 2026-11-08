@@ -1,0 +1,8 @@
+# MovieLens ratings may not be redistributed: rebuilt locally by code/prepare_data.py
+data/splits_full/
+ml-100k/
+# recomputed automatically by pipeline.py (about 20 minutes)
+cache/
+results/run/
+__pycache__/
+*.pyc
