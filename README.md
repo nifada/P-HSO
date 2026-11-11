@@ -13,7 +13,7 @@ Figs. 3–4, the average ranks, the paired tests and the imputation ablation.
 
 ```
 code/
-  prepare_data.py            rebuild the 30 split files from your copy of MovieLens 100K
+  prepare_data.py            rebuild the 30 split files from MovieLens 100K
   pipeline.py                all methods and the evaluation protocol -> per-user results
   stats_analysis.py          mean, SD, bootstrap CIs, mixed-design ANOVA, paired Wilcoxon tests
   make_tables.py             values of Tables III-VI, fusion weights, ablation, average ranks
