@@ -7,7 +7,7 @@ Writes:
   table_mean_ci.csv    mean, SD and bootstrap 95% CI per method x scenario x N   (Figs. 3-4, Tables IV-V)
   table_anova.csv      mixed-design (split-plot) ANOVA: Fusion (4) and SSM (3) within
                        users, Condition (3) between users, all interactions:
-                       F, df1, df2, p, partial eta^2                           (Table VI)
+                       F, df1, df2, p, partial eta^2                           (Table VIII)
   table_pairwise.csv   paired Wilcoxon signed-rank, best P-HSO vs each baseline,
                        Holm-corrected, with matched-pairs rank-biserial r        (Section III.A)
 

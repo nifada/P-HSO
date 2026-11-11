@@ -1,4 +1,4 @@
-"""Builds the values of Tables III-VI, the fusion weights, the ablation and the average ranks.
+"""Builds the values of Tables III-VIII, the fusion weights, the ablation and the average ranks.
 Run inside results/ after stats_analysis.py:
     cd results && python ../code/make_tables.py
 Inputs : results_per_user.csv, table_mean_ci.csv, table_anova.csv, table_pairwise.csv, chosen_k.json
@@ -12,7 +12,7 @@ NS = [5, 10, 15, 20]
 ORDER = ["CBSO", "SVD", "NMF", "PCA", "HSO-SVD", "HSO-NMF",
          "P-HSO-Res-M", "P-HSO-Lin-M", "P-HSO-JC-M", "P-HSO-Res-X", "P-HSO-Lin-X", "P-HSO-JC-X",
          "P-HSO-Res-W", "P-HSO-Lin-W", "P-HSO-JC-W", "P-HSO-Res-PW", "P-HSO-Lin-PW", "P-HSO-JC-PW"]
-REF = {"CBSO": "CBSO [28]", "SVD": "SVD [32]", "NMF": "NMF [33], [34]", "HSO-SVD": "HSO-SVD [22]", "HSO-NMF": "HSO-NMF [22]"}
+REF = {"CBSO": "CBSO [28]", "SVD": "SVD [33]", "NMF": "NMF [35], [36]", "HSO-SVD": "HSO-SVD [22]", "HSO-NMF": "HSO-NMF [22]"}
 
 pu = (R.groupby(["scenario", "method", "N", "user"])[["precision", "ndcg"]].mean().reset_index())
 agg = pu.groupby(["scenario", "method", "N"]).agg(p_mean=("precision", "mean"), p_sd=("precision", "std"),
@@ -77,7 +77,7 @@ for m in [x for x in ORDER if x.startswith("P-HSO") and (x.endswith("-M") or x.e
         row += [f"{z.p_mean:.4f}", f"{mi.p_mean:.4f}", f"{z.n_mean:.4f}", f"{mi.n_mean:.4f}"]
     abl.append(row)
 
-# ANOVA (Table VI)
+# ANOVA (Table VIII)
 A = pd.read_csv("table_anova.csv")
 eff = ["Fusion", "SSM", "Condition", "Fusion x SSM", "Fusion x Condition", "SSM x Condition", "Fusion x SSM x Condition"]
 t6 = []
@@ -111,9 +111,15 @@ with pd.ExcelWriter("run_results.xlsx") as xw:
     pd.DataFrame(t3, columns=["Method"] + [f"{sc} median (range)" for sc in SC]).to_excel(xw, "Table III k", index=False)
     pd.DataFrame(al, columns=["Method"] + [f"{sc} alpha median (range)" for sc in SC]).to_excel(xw, "Fusion weight alpha", index=False)
     pd.DataFrame(abl, columns=["Configuration"] + [f"{sc} {x}" for sc in SC for x in ("P@10 zero", "P@10 mean-imp", "NDCG@10 zero", "NDCG@10 mean-imp")]).to_excel(xw, "Ablation imputation", index=False)
-    pd.DataFrame(t6, columns=["Effect"] + [f"{m} @{N}" for m in ("Precision", "NDCG") for N in NS]).to_excel(xw, "Table VI ANOVA", index=False)
+    pd.DataFrame(t6, columns=["Effect"] + [f"{m} @{N}" for m in ("Precision", "NDCG") for N in NS]).to_excel(xw, "Table VIII ANOVA", index=False)
     A.to_excel(xw, "ANOVA full", index=False)
     PW.to_excel(xw, "Pairwise Wilcoxon", index=False)
+    # Table VII: Top-10 differences (P-HSO - baseline), Holm significance stars and r_rb
+    st = lambda p: "***" if p < 0.001 else "**" if p < 0.01 else "*" if p < 0.05 else ""
+    t7 = PW[PW.N == 10].copy()
+    t7["cell"] = [f"{d:+.4f}{st(p)} ({r:.2f})" for d, p, r in zip(t7.mean_diff, t7.p_holm, t7.r_rb)]
+    t7 = t7.pivot_table(index=["metric", "baseline"], columns="scenario", values="cell", aggfunc="first").reindex(columns=SC)
+    t7.to_excel(xw, "Table VII Wilcoxon Top-10")
     pd.read_csv("table_mean_ci.csv").to_excel(xw, "Mean SD CI all", index=False)
     # average rank over condition x list size x metric; ties receive the average of their ranks (Demsar 2006)
     mc = pd.read_csv("table_mean_ci.csv")
@@ -121,7 +127,11 @@ with pd.ExcelWriter("run_results.xlsx") as xw:
     rk = x.rank(axis=1, ascending=False, method="average")
     tab = rk.T
     tab.columns = [f"{a} @{b} {c}" for a, b, c in tab.columns]
-    tab.insert(0, "Average rank", rk.mean().round(2))
+    tab.insert(0, "Average rank", rk.mean().round(3))
     tab.sort_values("Average rank").to_excel(xw, "Average rank")
+    # Table VI: average rank within each condition (4 list sizes x 2 metrics) and overall (mean of the three)
+    t6r = pd.DataFrame({sc: rk.loc[sc].mean() for sc in SC})
+    t6r["Overall"] = t6r[SC].mean(axis=1)
+    t6r.round(3).sort_values("Overall").rename_axis("Method").to_excel(xw, "Table VI Average rank")
 print("users per condition:", users)
 print(pd.DataFrame(out["t4"], columns=["Method"] + [f"{sc}@{N}" for sc in SC for N in NS])[["Method", "ML0@10", "ML5@10", "ML10@10"]].to_string(index=False))
