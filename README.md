@@ -6,17 +6,17 @@ Code, data splits, ontology and results for the paper
 > Ontology-Based Semantic Similarity Measures in PCA-Based Hybrid Movie Recommendation Systems under
 > Cold-Start Conditions," *JOIV: International Journal on Informatics Visualization* (under review).
 
-The repository reproduces every number, table and figure of the results section: Tables III–VI,
+The repository reproduces every number, table and figure of the results section: Tables III–VIII,
 Figs. 3–4, the average ranks, the paired tests and the imputation ablation.
 
 ## Contents
 
 ```
 code/
-  prepare_data.py            rebuild the 30 split files from MovieLens 100K
+  prepare_data.py            rebuild the 30 split files from your copy of MovieLens 100K
   pipeline.py                all methods and the evaluation protocol -> per-user results
   stats_analysis.py          mean, SD, bootstrap CIs, mixed-design ANOVA, paired Wilcoxon tests
-  make_tables.py             values of Tables III-VI, fusion weights, ablation, average ranks
+  make_tables.py             values of Tables III-VIII, fusion weights, ablation, average ranks
   make_fig3.py, make_fig4.py Fig. 3 (all methods) and Fig. 4 (fusion x similarity measure)
   verify_semantic_scores.py  recompute all semantic similarities with ssmpy and compare
   compat/old_numpy_names.py  lets nimfa 1.4.0 run under NumPy 2 (see Notes)
@@ -107,10 +107,12 @@ This reproduces `table_mean_ci.csv`, `table_anova.csv`, `table_pairwise.csv` and
 |---|---|
 | Table III (selected k) | `chosen_k.json`; sheet "Table III k" |
 | Tables IV and V (mean ± SD) | `table_mean_ci.csv`; sheets "Table IV Precision", "Table V NDCG" |
-| Table VI (mixed-design ANOVA) | `table_anova.csv`; sheets "Table VI ANOVA", "ANOVA full" |
+| Table VI (average rank per condition and overall) | sheet "Table VI Average rank"; per-cell ranks in sheet "Average rank" |
+| Table VII (paired Wilcoxon tests at Top-10) | `table_pairwise.csv`; sheet "Table VII Wilcoxon Top-10" |
+| Table VIII (mixed-design ANOVA) | `table_anova.csv`; sheets "Table VIII ANOVA", "ANOVA full" |
 | Fig. 3 (all methods at Top-10) and Fig. 4 (P-HSO by fusion strategy and similarity measure), with 95% bootstrap CIs | `table_mean_ci.csv`; `figures/fig3.png`, `figures/fig4.png` |
-| Average ranks (Section III.A) | sheet "Average rank" (ties receive the average of their ranks) |
-| Paired Wilcoxon tests (Section III.A) | `table_pairwise.csv`: best P-HSO configuration per condition, list size and metric against each baseline; Holm correction within each group of six baseline comparisons; effect size `r_rb` |
+| Average ranks (Section III.A) | sheet "Average rank": rank of each method in each of the 24 combinations of condition, list size and metric (ties receive the average of their ranks) and their mean |
+| Paired Wilcoxon tests (Section III.A) | `table_pairwise.csv`: best P-HSO configuration per condition, list size and metric against each baseline; Holm correction within each group of baseline comparisons (six; five in ML0, where the best P-HSO is identical to PCA); effect size `r_rb` |
 | Fusion weights (Section III.C) | `chosen_k.json` (`...|alpha`); sheet "Fusion weight alpha" |
 | Imputation ablation (Section III.A) | sheet "Ablation imputation" |
 
