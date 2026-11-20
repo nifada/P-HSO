@@ -101,6 +101,40 @@ def cf_svd(V, k):                       # truncated SVD of the zero-filled, unce
     return (U[:, :k] * s[:k]) @ Vt[:k]
 
 
+EM_GRID = [2, 3, 5, 8, 10, 15, 20, 30, 50]   # k grid of EM-PCA (iterative, reduced like NMF)
+
+
+def cf_empca(V, k, damp=0.0, iters=15):
+    """EM-PCA (iterative PCA imputation) fitted on the OBSERVED ratings only (reviewer-requested
+    missing-data baseline). Missing entries are initialised with the movie means, then repeatedly
+    replaced by the rank-k reconstruction while observed entries stay fixed. Candidate movies are
+    ranked by the predicted rating. Users without ratings (ML0 test users) receive the movie means.
+    damp > 0 shrinks the movie means towards the global mean (damp pseudo-ratings), a diagnostic variant."""
+    from scipy.sparse.linalg import svds
+    rows = np.flatnonzero((V > 0).any(1))
+    X = V[rows]
+    O = X > 0
+    g = V[V > 0].mean()
+    cnt = O.sum(0)
+    mu0 = (X.sum(0) + damp * g) / np.maximum(cnt + damp, 1e-9) if damp > 0 \
+        else np.where(cnt > 0, X.sum(0) / np.maximum(cnt, 1), g)
+    F = np.where(O, X, mu0)
+    for _ in range(iters):
+        mu = F.mean(0)
+        U, s, Vt = svds(F - mu, k=k)
+        F = np.where(O, X, (U * s) @ Vt + mu)
+    mu = F.mean(0)
+    U, s, Vt = svds(F - mu, k=k)
+    out = np.tile(mu0, (V.shape[0], 1)).astype(float)
+    out[rows] = (F - mu) @ Vt.T @ Vt + mu
+    return out
+
+
+def cf_popularity(V):
+    """TopPop: every user gets the number of training ratings of each movie (non-personalised)."""
+    return np.tile((V > 0).sum(0).astype(float), (V.shape[0], 1))
+
+
 REQUIRE_NIMFA = False                   # set by --require-nimfa
 
 
@@ -245,8 +279,9 @@ def evaluate(scores, train, test, users, nmax=max(N_LIST)):
 
 
 # --------------------------------------------------------------------- driver
-def methods():
-    """(name, cf_model, impute, ssver or None, fusion or None)"""
+def methods(extras=False):
+    """(name, cf_model, impute, ssver or None, fusion or None).
+    extras=True adds the baselines requested in round 3 (TopPop, EM-PCA, damped EM-PCA)."""
     m = [("CBSO", None, None, 1, None),
          ("SVD", "svd", None, None, None),
          ("NMF", "nmf", None, None, None),
@@ -261,6 +296,10 @@ def methods():
     for sv, sn in SSMS.items():
         for fu in ["W", "PW"]:
             m.append((f"P-HSO-{sn}-{fu}", "pca", "zero", sv, fu))
+    if extras:
+        m += [("TopPop", "pop", None, None, None),
+              ("EM-PCA", "empca", "obs", None, None),
+              ("EM-PCA-damped", "empca", "damped", None, None)]
     return m
 
 
@@ -278,6 +317,9 @@ def main():
                     help="also evaluate the one test user per fold whose ratings were split")
     ap.add_argument("--nmf-grid", default="2,3,5,8,10,15,20,30,50,100",
                     help="k values for NMF (slow); default is a reduced grid")
+    ap.add_argument("--with-extras", action="store_true",
+                    help="also run TopPop, EM-PCA and damped EM-PCA (use with --only-models pop,empca)")
+    ap.add_argument("--em-grid", default=",".join(map(str, EM_GRID)), help="k values for EM-PCA")
     ap.add_argument("--out", default=os.path.join(ROOT, "results", "run", "results_per_user.csv"))
     ap.add_argument("--only-models", default="", help="e.g. nmf: run only methods with these CF models")
     ap.add_argument("--require-nimfa", action="store_true", help="fail instead of using scikit-learn NMF")
@@ -286,14 +328,16 @@ def main():
     a = ap.parse_args()
     grid = [2, 5, 10, 20] if a.quick else K_GRID
     nmf_grid = [2, 5, 10] if a.quick else [int(x) for x in a.nmf_grid.split(",")]
-    meths = [m for m in methods() if not (a.no_nmf and m[1] == "nmf")]
+    meths = [m for m in methods(a.with_extras) if not (a.no_nmf and m[1] == "nmf")]
     if a.only_models:
         meths = [m for m in meths if m[1] in a.only_models.split(",")]
     global REQUIRE_NIMFA
     REQUIRE_NIMFA = a.require_nimfa
 
-    cb = {sv: cb_scores(a.nitem, sv, a.db) for sv in SSMS}
-    pairs = {sv: cb_pairs(a.nitem, sv, a.db) for sv in SSMS}
+    need = {m[3] for m in meths if m[3]}          # similarity measures that some selected method uses
+    em_grid = [int(x) for x in a.em_grid.split(",")]
+    cb = {sv: cb_scores(a.nitem, sv, a.db) for sv in SSMS if sv in need}
+    pairs = {sv: cb_pairs(a.nitem, sv, a.db) for sv in SSMS if sv in need}
     out, chosen = [], {}
     rng = np.random.default_rng(2026)
     job_no = -1
@@ -308,16 +352,18 @@ def main():
             users = eval_users(tr, te, n, a.keep_boundary)
             V = rating_matrix(tr, a.nuser, a.nitem)
             Vv = rating_matrix(vtr, a.nuser, a.nitem)
-            cbp = {sv: cb_personal(pairs[sv], tr, a.nuser, cb[sv]) for sv in SSMS}
-            cbpv = {sv: cb_personal(pairs[sv], vtr, a.nuser, cb[sv]) for sv in SSMS}
+            cbp = {sv: cb_personal(pairs[sv], tr, a.nuser, cb[sv]) for sv in need}
+            cbpv = {sv: cb_personal(pairs[sv], vtr, a.nuser, cb[sv]) for sv in need}
             groups = {}
             for mt in meths:
                 groups.setdefault((mt[1], mt[2]), []).append(mt)
             for (model, imp), ms in groups.items():
                 def cf(M, k):
                     return {"pca": lambda: cf_pca(M, k, imp), "svd": lambda: cf_svd(M, k),
-                            "nmf": lambda: cf_nmf(M, k)}[model]().astype(np.float32)
-                grid_m = (nmf_grid if model == "nmf" else grid) if model in ("pca", "svd", "nmf") else [None]
+                            "nmf": lambda: cf_nmf(M, k),
+                            "empca": lambda: cf_empca(M, k, damp=20.0 if imp == "damped" else 0.0),
+                            "pop": lambda: cf_popularity(M)}[model]().astype(np.float32)
+                grid_m = {"nmf": nmf_grid, "empca": em_grid, "pop": [None]}.get(model, grid) if model is not None else [None]
                 # ---- inner validation: one CF fit per k, shared by all methods of the group
                 best = {m[0]: (grid_m[0], -1, None) for m in ms}
                 if len(grid_m) > 1:

@@ -1,0 +1,12 @@
+item,value
+users in ML0,631
+users in ML5,646
+users in ML10,674
+user-condition units used in the ANOVA,1951
+distinct users,913
+users appearing in 1 condition(s),183
+users appearing in 2 condition(s),422
+users appearing in 3 condition(s),308
+overlap ML0 & ML5,431
+overlap ML0 & ML10,449
+overlap ML5 & ML10,466

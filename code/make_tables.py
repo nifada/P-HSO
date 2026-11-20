@@ -1,4 +1,6 @@
 """Builds the values of Tables III-VIII, the fusion weights, the ablation and the average ranks.
+TopPop and EM-PCA rows (Tables IV, V; EM-PCA also Table III) appear when results_per_user.csv and chosen_k.json
+contain them (see README, "Round-3 baselines"); Table VI ranks the 19 methods without EM-PCA.
 Run inside results/ after stats_analysis.py:
     cd results && python ../code/make_tables.py
 Inputs : results_per_user.csv, table_mean_ci.csv, table_anova.csv, table_pairwise.csv, chosen_k.json
@@ -9,10 +11,12 @@ import json, numpy as np, pandas as pd
 R = pd.read_csv("results_per_user.csv")
 SC = ["ML0", "ML5", "ML10"]
 NS = [5, 10, 15, 20]
-ORDER = ["CBSO", "SVD", "NMF", "PCA", "HSO-SVD", "HSO-NMF",
+ORDER = ["CBSO", "SVD", "NMF", "PCA", "HSO-SVD", "HSO-NMF", "TopPop", "EM-PCA",
          "P-HSO-Res-M", "P-HSO-Lin-M", "P-HSO-JC-M", "P-HSO-Res-X", "P-HSO-Lin-X", "P-HSO-JC-X",
          "P-HSO-Res-W", "P-HSO-Lin-W", "P-HSO-JC-W", "P-HSO-Res-PW", "P-HSO-Lin-PW", "P-HSO-JC-PW"]
-REF = {"CBSO": "CBSO [28]", "SVD": "SVD [33]", "NMF": "NMF [35], [36]", "HSO-SVD": "HSO-SVD [22]", "HSO-NMF": "HSO-NMF [22]"}
+ORDER = [m for m in ORDER if m in set(R.method)]          # TopPop / EM-PCA appear once results_extras were merged
+RANKED = [m for m in ORDER if m != "EM-PCA"]              # Table VI ranks the 19 methods without the EM-PCA ablation
+REF = {"EM-PCA": "EM-PCA [45]", "CBSO": "CBSO [28]", "SVD": "SVD [33]", "NMF": "NMF [35], [36]", "HSO-SVD": "HSO-SVD [22]", "HSO-NMF": "HSO-NMF [22]"}
 
 pu = (R.groupby(["scenario", "method", "N", "user"])[["precision", "ndcg"]].mean().reset_index())
 agg = pu.groupby(["scenario", "method", "N"]).agg(p_mean=("precision", "mean"), p_sd=("precision", "std"),
@@ -50,7 +54,8 @@ def best_cols(metric):
 ck = json.load(open("chosen_k.json"))
 k = pd.DataFrame([dict(scenario=key.split("|")[0], fold=key.split("|")[1], method=key.split("|")[2], k=v)
                   for key, v in ck.items() if v is not None and not key.endswith("|alpha")])
-latent = ["SVD", "NMF", "PCA", "HSO-SVD", "HSO-NMF"] + [m for m in ORDER if m.startswith("P-HSO")]
+latent = ["SVD", "NMF", "PCA", "HSO-SVD", "HSO-NMF"] + [m for m in ORDER if m == "EM-PCA"] \
+    + [m for m in ORDER if m.startswith("P-HSO")]
 t3 = []
 for m in latent:
     row = [REF.get(m, m)]
@@ -123,7 +128,7 @@ with pd.ExcelWriter("run_results.xlsx") as xw:
     pd.read_csv("table_mean_ci.csv").to_excel(xw, "Mean SD CI all", index=False)
     # average rank over condition x list size x metric; ties receive the average of their ranks (Demsar 2006)
     mc = pd.read_csv("table_mean_ci.csv")
-    x = mc[mc.method.isin(ORDER)].pivot_table(index=["scenario", "N", "metric"], columns="method", values="mean").round(12)
+    x = mc[mc.method.isin(RANKED)].pivot_table(index=["scenario", "N", "metric"], columns="method", values="mean").round(12)
     rk = x.rank(axis=1, ascending=False, method="average")
     tab = rk.T
     tab.columns = [f"{a} @{b} {c}" for a, b, c in tab.columns]

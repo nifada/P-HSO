@@ -16,6 +16,10 @@ the user was a test user).  Every P-HSO configuration is evaluated on the same u
 (within-subject), but ML0/ML5/ML10 draw their test users separately, so Condition is
 a between-subject factor.  Unequal group sizes are handled with unweighted
 (Type III) means.
+Test users are drawn separately per condition, so the same user can be tested in several conditions
+(913 distinct users in 1,951 user-condition units); repeated_users_sensitivity.py reports the
+Greenhouse-Geisser-corrected ANOVA and a one-condition-per-user sensitivity analysis.
+Holm family of the paired tests: CBSO, SVD, NMF, PCA, HSO-SVD, HSO-NMF and, when present, TopPop.
 Needs only numpy, scipy, pandas.
 """
 import sys
@@ -113,7 +117,9 @@ def main(path):
 
     # ---- 1. mean, SD, 95% CI
     rows = []
-    for (sc, me, N), g in per_user.groupby(["scenario", "method", "N"]):
+    # round-3 baselines are bootstrapped last, so adding them leaves the CIs of the other methods unchanged
+    EXTRA = {"TopPop", "EM-PCA", "EM-PCA-damped"}
+    for (sc, me, N), g in sorted(per_user.groupby(["scenario", "method", "N"]), key=lambda kv: kv[0][1] in EXTRA):
         for m in METRICS:
             lo, hi = boot_ci(g[m])
             rows.append(dict(scenario=sc, method=me, N=N, metric=m, mean=g[m].mean(),
@@ -143,7 +149,7 @@ def main(path):
     pd.concat(an).to_csv("table_anova.csv", index=False)
 
     # ---- 3. best P-HSO vs baselines, paired Wilcoxon + Holm
-    base = ["CBSO", "SVD", "NMF", "PCA", "HSO-SVD", "HSO-NMF"]
+    base = ["CBSO", "SVD", "NMF", "PCA", "HSO-SVD", "HSO-NMF", "TopPop"]   # TopPop skipped if absent
     pw = []
     for (sc, N), g in per_user.groupby(["scenario", "N"]):
         for m in METRICS:
