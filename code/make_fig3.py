@@ -14,7 +14,7 @@ plt.rcParams.update({"font.family": "DejaVu Serif", "font.size": 11})
 SC = [("ML0", "(a) ML0"), ("ML5", "(b) ML5"), ("ML10", "(c) ML10")]
 METHODS = [("P-HSO-Lin-PW", "P-HSO-Lin, personalized weighted"), ("P-HSO-Lin-W", "P-HSO-Lin, weighted"),
            ("P-HSO-Lin-X", "P-HSO-Lin, multiplicative"), ("P-HSO-Lin-M", "P-HSO-Lin, mean"),
-           ("PCA", "PCA"), ("SVD", "SVD"), ("NMF", "NMF"), ("HSO-SVD", "HSO-SVD"),
+           ("PCA", "PCA"), ("TopPop", "TopPop"), ("EM-PCA", "EM-PCA"), ("SVD", "SVD"), ("NMF", "NMF"), ("HSO-SVD", "HSO-SVD"),
            ("HSO-NMF", "HSO-NMF"), ("CBSO", "CBSO")]
 MET = [("precision", "Precision@10", 1, 0.72), ("ndcg", "NDCG@10", 1, 0.72)]
 BLUE, GREY = "#2878d4", "#4a4a4a"

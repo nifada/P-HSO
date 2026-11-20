@@ -13,10 +13,13 @@ Figs. 3–4, the average ranks, the paired tests and the imputation ablation.
 
 ```
 code/
-  prepare_data.py            rebuild the 30 split files from the MovieLens 100K
+  prepare_data.py            rebuild the 30 split files from your copy of MovieLens 100K
   pipeline.py                all methods and the evaluation protocol -> per-user results
   stats_analysis.py          mean, SD, bootstrap CIs, mixed-design ANOVA, paired Wilcoxon tests
   make_tables.py             values of Tables III-VIII, fusion weights, ablation, average ranks
+  extra_baseline_tests.py    paired tests of PCA vs TopPop / EM-PCA (round-3 baselines)
+  repeated_users_sensitivity.py  user overlap across conditions, Greenhouse-Geisser-corrected ANOVA and
+                             one-condition-per-user sensitivity analysis (Table IX)
   make_fig3.py, make_fig4.py Fig. 3 (all methods) and Fig. 4 (fusion x similarity measure)
   verify_semantic_scores.py  recompute all semantic similarities with ssmpy and compare
   compat/old_numpy_names.py  lets nimfa 1.4.0 run under NumPy 2 (see Notes)
@@ -27,6 +30,9 @@ data/
 results/
   results_per_user.csv       every metric for every method, condition, split, list size and test user
   chosen_k.json              selected k (and fusion weight alpha) per method, condition and split
+  table_extra_baselines.csv  paired Wilcoxon tests (Holm) for TopPop and EM-PCA
+  repeated_users/N{5,10,15,20}/  overlap_table.csv, anova_original.csv (with Greenhouse-Geisser), anova_single_condition.csv
+  run/results_extras.csv     TopPop, EM-PCA and damped EM-PCA per-user results (already merged into results_per_user.csv)
   table_mean_ci.csv, table_anova.csv, table_pairwise.csv, tables.json
   run_results.xlsx  all tables in one workbook
   figures/fig3.png, figures/fig4.png
@@ -77,11 +83,18 @@ python code/pipeline.py --scenarios 0  --out results/run/results_ML0.csv
 python code/pipeline.py --scenarios 5  --out results/run/results_ML5.csv
 python code/pipeline.py --scenarios 10 --out results/run/results_ML10.csv
 
+# 2b. round-3 baselines: TopPop, EM-PCA (rank-k PCA on observed ratings, 15 EM iterations, k grid 2,3,5,8,10,15,20,30,50)
+#     and a damped EM-PCA diagnostic; no ontology scores are needed, so this runs in minutes
+python code/pipeline.py --scenarios 0,5,10 --with-extras --only-models pop,empca --out results/run/results_extras.csv
+#     then append results_extras.csv to results_per_user.csv and results_extras_chosen_k.json to chosen_k.json
+
 # 3. combine, then statistics, tables and figures
 python -c "import pandas as pd, json, glob; pd.concat(pd.read_csv(f) for f in sorted(glob.glob('results/run/results_ML*[0-9].csv'))).to_csv('results/run/results_per_user.csv', index=False); json.dump({k: v for f in sorted(glob.glob('results/run/results_ML*_chosen_k.json')) for k, v in json.load(open(f)).items()}, open('results/run/chosen_k.json', 'w'), indent=1)"
 cd results/run
 python ../../code/stats_analysis.py results_per_user.csv
 python ../../code/make_tables.py
+python ../../code/extra_baseline_tests.py results_per_user.csv
+PYTHONPATH=../../code python ../../code/repeated_users_sensitivity.py results_per_user.csv --N 10 --reps 300
 python ../../code/make_fig3.py table_mean_ci.csv fig3.png
 python ../../code/make_fig4.py table_mean_ci.csv fig4.png
 ```
@@ -105,6 +118,7 @@ This reproduces `table_mean_ci.csv`, `table_anova.csv`, `table_pairwise.csv` and
 
 | Paper | File |
 |---|---|
+| Table II baselines TopPop and EM-PCA | `pipeline.py --with-extras --only-models pop,empca` (`cf_popularity`, `cf_empca`) |
 | Table III (selected k) | `chosen_k.json`; sheet "Table III k" |
 | Tables IV and V (mean ± SD) | `table_mean_ci.csv`; sheets "Table IV Precision", "Table V NDCG" |
 | Table VI (average rank per condition and overall) | sheet "Table VI Average rank"; per-cell ranks in sheet "Average rank" |
@@ -112,7 +126,9 @@ This reproduces `table_mean_ci.csv`, `table_anova.csv`, `table_pairwise.csv` and
 | Table VIII (mixed-design ANOVA) | `table_anova.csv`; sheets "Table VIII ANOVA", "ANOVA full" |
 | Fig. 3 (all methods at Top-10) and Fig. 4 (P-HSO by fusion strategy and similarity measure), with 95% bootstrap CIs | `table_mean_ci.csv`; `figures/fig3.png`, `figures/fig4.png` |
 | Average ranks (Section III.A) | sheet "Average rank": rank of each method in each of the 24 combinations of condition, list size and metric (ties receive the average of their ranks) and their mean |
-| Paired Wilcoxon tests (Section III.A) | `table_pairwise.csv`: best P-HSO configuration per condition, list size and metric against each baseline; Holm correction within each group of baseline comparisons (six; five in ML0, where the best P-HSO is identical to PCA); effect size `r_rb` |
+| Paired Wilcoxon tests (Section III.A) | `table_pairwise.csv`: best P-HSO configuration per condition, list size and metric against each baseline; Holm correction within each group of baseline comparisons (seven including TopPop; six in ML0, where the best P-HSO is identical to PCA); effect size `r_rb` |
+| TopPop and EM-PCA ablation (Section III.A); PCA vs TopPop / EM-PCA tests | `table_mean_ci.csv`; `table_extra_baselines.csv` (`extra_baseline_tests.py`) |
+| Repeated users, Greenhouse-Geisser correction and sensitivity analysis (Section III.D, Table IX) | `repeated_users/N*/` (`repeated_users_sensitivity.py`) |
 | Fusion weights (Section III.C) | `chosen_k.json` (`...|alpha`); sheet "Fusion weight alpha" |
 | Imputation ablation (Section III.A) | sheet "Ablation imputation" |
 
@@ -131,6 +147,10 @@ of the paper; `ndcg_std` uses the standard IDCG over min(|G_u|, N) and is provid
 | (19) personalized semantic score | `cb_personal` |
 | (20)–(23) Precision, DCG, IDCG, NDCG | `evaluate` |
 
+EM-PCA (`cf_empca`) starts from the movie means for the missing entries, repeats 15 times {rank-k
+reconstruction, restore observed entries}, ranks by the predicted rating, and gives users without
+ratings the movie means; the damped variant shrinks the movie means towards the global mean with
+20 pseudo-ratings. TopPop (`cf_popularity`) ranks by the number of training ratings per movie.
 Baselines: SVD is the truncated SVD of the zero-filled, uncentred matrix (`cf_svd`); NMF uses nimfa
 with NNDSVD seeding, Euclidean updates and 2,000 iterations (`cf_nmf`); HSO-SVD and HSO-NMF combine
 them with the Resnik score by multiplicative fusion.
@@ -144,6 +164,10 @@ condition as above:
 2. NMF and HSO-NMF with nimfa (`--only-models nmf --require-nimfa`), replacing the NMF results of run 1;
 3. HSO-SVD in ML0 after the rule for users whose CF scores are all equal was added to Eq. (14),
    replacing the ML0 HSO-SVD results of run 1 (the rule does not affect any other method or condition).
+
+4. TopPop, EM-PCA and damped EM-PCA (round 3), run once for all three conditions with
+   `--with-extras --only-models pop,empca` and appended to the results of runs 1-3 (no other method changes).
+   A fresh run reproduces these rows up to tie-breaking.
 
 Ties are broken at random, with one random-number generator per run (seed 2026). A fresh run of
 all methods per condition reproduces the published values except those of SVD, NMF, HSO-SVD and
