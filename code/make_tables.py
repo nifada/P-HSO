@@ -16,7 +16,7 @@ ORDER = ["CBSO", "SVD", "NMF", "PCA", "HSO-SVD", "HSO-NMF", "TopPop", "EM-PCA",
          "P-HSO-Res-W", "P-HSO-Lin-W", "P-HSO-JC-W", "P-HSO-Res-PW", "P-HSO-Lin-PW", "P-HSO-JC-PW"]
 ORDER = [m for m in ORDER if m in set(R.method)]          # TopPop / EM-PCA appear once results_extras were merged
 RANKED = [m for m in ORDER if m != "EM-PCA"]              # Table VI ranks the 19 methods without the EM-PCA ablation
-REF = {"EM-PCA": "EM-PCA [45]", "CBSO": "CBSO [28]", "SVD": "SVD [33]", "NMF": "NMF [35], [36]", "HSO-SVD": "HSO-SVD [22]", "HSO-NMF": "HSO-NMF [22]"}
+REF = {"EM-PCA": "EM-PCA [35]", "CBSO": "CBSO [28]", "SVD": "SVD [33]", "NMF": "NMF [37], [38]", "HSO-SVD": "HSO-SVD [22]", "HSO-NMF": "HSO-NMF [22]"}
 
 pu = (R.groupby(["scenario", "method", "N", "user"])[["precision", "ndcg"]].mean().reset_index())
 agg = pu.groupby(["scenario", "method", "N"]).agg(p_mean=("precision", "mean"), p_sd=("precision", "std"),
