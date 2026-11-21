@@ -1,4 +1,4 @@
-"""extra_baseline_tests.py -- paired Wilcoxon tests (Holm) for the round-3 baselines.
+"""extra_baseline_tests.py -- paired Wilcoxon tests (Holm) for TopPop and EM-PCA.
 
     cd results && python ../code/extra_baseline_tests.py results_per_user.csv
 
