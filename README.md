@@ -6,8 +6,8 @@ Code, data splits, ontology and results for the paper
 > Ontology-Based Semantic Similarity Measures in PCA-Based Hybrid Movie Recommendation Systems under
 > Cold-Start Conditions," *JOIV: International Journal on Informatics Visualization* (under review).
 
-The repository reproduces every number, table and figure of the results section: Tables III–VIII,
-Figs. 3–4, the average ranks, the paired tests and the imputation ablation.
+The repository reproduces every number, table and figure of the results section: Tables III–IX,
+Figs. 3–4, the average ranks, the paired tests, the repeated-user checks and the ablations.
 
 ## Contents
 
@@ -17,7 +17,7 @@ code/
   pipeline.py                all methods and the evaluation protocol -> per-user results
   stats_analysis.py          mean, SD, bootstrap CIs, mixed-design ANOVA, paired Wilcoxon tests
   make_tables.py             values of Tables III-VIII, fusion weights, ablation, average ranks
-  extra_baseline_tests.py    paired tests of PCA vs TopPop / EM-PCA (round-3 baselines)
+  extra_baseline_tests.py    paired tests of PCA vs TopPop / EM-PCA
   repeated_users_sensitivity.py  user overlap across conditions, Greenhouse-Geisser-corrected ANOVA and
                              one-condition-per-user sensitivity analysis (Table IX)
   make_fig3.py, make_fig4.py Fig. 3 (all methods) and Fig. 4 (fusion x similarity measure)
@@ -32,7 +32,7 @@ results/
   chosen_k.json              selected k (and fusion weight alpha) per method, condition and split
   table_extra_baselines.csv  paired Wilcoxon tests (Holm) for TopPop and EM-PCA
   repeated_users/N{5,10,15,20}/  overlap_table.csv, anova_original.csv (with Greenhouse-Geisser), anova_single_condition.csv
-  run/results_extras.csv     TopPop, EM-PCA and damped EM-PCA per-user results (already merged into results_per_user.csv)
+  run/                       git-ignored scratch folder for a fresh run (the TopPop, EM-PCA and damped EM-PCA results are already merged into results_per_user.csv)
   table_mean_ci.csv, table_anova.csv, table_pairwise.csv, tables.json
   run_results.xlsx  all tables in one workbook
   figures/fig3.png, figures/fig4.png
@@ -83,7 +83,7 @@ python code/pipeline.py --scenarios 0  --out results/run/results_ML0.csv
 python code/pipeline.py --scenarios 5  --out results/run/results_ML5.csv
 python code/pipeline.py --scenarios 10 --out results/run/results_ML10.csv
 
-# 2b. round-3 baselines: TopPop, EM-PCA (rank-k PCA on observed ratings, 15 EM iterations, k grid 2,3,5,8,10,15,20,30,50)
+# 2b. additional baselines: TopPop, EM-PCA (rank-k PCA on observed ratings, 15 EM iterations, k grid 2,3,5,8,10,15,20,30,50)
 #     and a damped EM-PCA diagnostic; no ontology scores are needed, so this runs in minutes
 python code/pipeline.py --scenarios 0,5,10 --with-extras --only-models pop,empca --out results/run/results_extras.csv
 #     then append results_extras.csv to results_per_user.csv and results_extras_chosen_k.json to chosen_k.json
@@ -135,6 +135,18 @@ This reproduces `table_mean_ci.csv`, `table_anova.csv`, `table_pairwise.csv` and
 Precision and NDCG are on the 0–1 scale. In `results_per_user.csv`, `ndcg` follows Eqs. (21)–(23)
 of the paper; `ndcg_std` uses the standard IDCG over min(|G_u|, N) and is provided for reference.
 
+## Algorithm 1 and code
+
+| Algorithm 1 step (paper, Section II.H) | Code (`code/pipeline.py`) |
+|---|---|
+| 1. Split users and ratings | split files read by `load_fold` (rebuilt by `prepare_data.py`); the boundary user is dropped in `eval_users` |
+| 2. Inner validation data (20% of non-test training users keep h ratings) | `inner_validation` (`VAL_FRAC = 0.2`) |
+| 3. Select k (and alpha) by Precision@10 on the validation users | model-selection loop in `main` (`for k in grid_m`, `for al in ALPHAS`); the first best value is kept (`p10 > best`), so ties go to the smaller k and alpha |
+| 4. Refit with the chosen k on all 943 users | `cf(V, k)` on the full training matrix `V` |
+| 5. Scores, normalization, fusion, ranking (random ties) | `cb_scores`, `cb_personal`, `minmax_rows`, `fuse`, `evaluate` |
+| 6. Precision and NDCG against held-out ratings | `evaluate` |
+| 7. Repeat for five splits, average per user | loop over `FOLDS`; averaging in `stats_analysis.py` |
+
 ## Equations and code
 
 | Equation | Code (`code/pipeline.py`) |
@@ -165,7 +177,7 @@ condition as above:
 3. HSO-SVD in ML0 after the rule for users whose CF scores are all equal was added to Eq. (14),
    replacing the ML0 HSO-SVD results of run 1 (the rule does not affect any other method or condition).
 
-4. TopPop, EM-PCA and damped EM-PCA (round 3), run once for all three conditions with
+4. TopPop, EM-PCA and damped EM-PCA (added in the revision), run once for all three conditions with
    `--with-extras --only-models pop,empca` and appended to the results of runs 1-3 (no other method changes).
    A fresh run reproduces these rows up to tie-breaking.
 
