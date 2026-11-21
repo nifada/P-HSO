@@ -210,5 +210,7 @@ If you use this code, please cite the paper above and the original HSO study:
 > Ontology-based Model on Movie Recommendation System," in *Proc. CENIM 2022*, pp. 1–7,
 > doi: 10.1109/CENIM56801.2022.10037277.
 
+The code is released under the MIT License (see LICENSE). MovieLens 100K is distributed by GroupLens under its own terms.
+
 MovieLens 100K: F. M. Harper and J. A. Konstan, "The MovieLens Datasets: History and Context,"
 *ACM TiiS*, vol. 5, no. 4, 2015, doi: 10.1145/2827872.
