@@ -117,7 +117,7 @@ def main(path):
 
     # ---- 1. mean, SD, 95% CI
     rows = []
-    # round-3 baselines are bootstrapped last, so adding them leaves the CIs of the other methods unchanged
+    # TopPop and EM-PCA are bootstrapped last, so adding them leaves the CIs of the other methods unchanged
     EXTRA = {"TopPop", "EM-PCA", "EM-PCA-damped"}
     for (sc, me, N), g in sorted(per_user.groupby(["scenario", "method", "N"]), key=lambda kv: kv[0][1] in EXTRA):
         for m in METRICS:
