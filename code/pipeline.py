@@ -281,7 +281,7 @@ def evaluate(scores, train, test, users, nmax=max(N_LIST)):
 # --------------------------------------------------------------------- driver
 def methods(extras=False):
     """(name, cf_model, impute, ssver or None, fusion or None).
-    extras=True adds the baselines requested in round 3 (TopPop, EM-PCA, damped EM-PCA)."""
+    extras=True adds the addtional baselines (TopPop, EM-PCA, damped EM-PCA)."""
     m = [("CBSO", None, None, 1, None),
          ("SVD", "svd", None, None, None),
          ("NMF", "nmf", None, None, None),
