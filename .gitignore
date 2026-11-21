@@ -6,3 +6,4 @@ cache/
 results/run/
 __pycache__/
 *.pyc
+desktop.ini
