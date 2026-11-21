@@ -1,6 +1,6 @@
 """Builds the values of Tables III-VIII, the fusion weights, the ablation and the average ranks.
 TopPop and EM-PCA rows (Tables IV, V; EM-PCA also Table III) appear when results_per_user.csv and chosen_k.json
-contain them (see README, "How the published results are produced"); Table VI ranks the 19 methods without EM-PCA.
+contain them (see README, "How the published results were produced"); Table VI ranks the 19 methods without EM-PCA.
 Run inside results/ after stats_analysis.py:
     cd results && python ../code/make_tables.py
 Inputs : results_per_user.csv, table_mean_ci.csv, table_anova.csv, table_pairwise.csv, chosen_k.json
